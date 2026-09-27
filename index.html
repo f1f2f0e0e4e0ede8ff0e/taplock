@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>TapLock</title>
+<meta name="description" content="Course project: an RFID lock built with an Arduino UNO, an RC522 reader, a servo and a buzzer.">
+<script>
+  // Apply a saved light theme before the page is drawn, so it does not flash dark first.
+  try { if (localStorage.getItem('theme') === 'light') document.documentElement.dataset.theme = 'light'; } catch (e) {}
+</script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000; --s1: #1C1C1E; --s2: #2C2C2E;
+    --bd: rgba(84,84,88,.42); --bd2: rgba(84,84,88,.72); --hair: rgba(84,84,88,.30);
+    --t0: #FFFFFF; --t1: rgba(235,235,245,.86); --t2: rgba(235,235,245,.70);
+    --t3: rgba(235,235,245,.55); --t4: rgba(235,235,245,.32);
+    --fill: rgba(120,120,128,.20); --fill-hover: rgba(120,120,128,.32);
+    --glass: rgba(0,0,0,.72); --blur: saturate(180%) blur(20px);
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --r-sm: 10px; --r-xs: 6px; --pill: 999px;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #F2F2F7; --s1: #FFFFFF; --s2: #EDEDF2;
+    --bd: rgba(60,60,67,.16); --bd2: rgba(60,60,67,.29); --hair: rgba(60,60,67,.11);
+    --t0: #000000; --t1: rgba(60,60,67,.92); --t2: rgba(60,60,67,.84);
+    --t3: rgba(60,60,67,.75); --t4: rgba(60,60,67,.45);
+    --fill: rgba(120,120,128,.12); --fill-hover: rgba(120,120,128,.22);
+    --glass: rgba(242,242,247,.78);
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; -webkit-text-size-adjust: 100%; }
+  body { background: var(--bg); color: var(--t1); font: 15px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--fill-hover); color: var(--t0); }
+  a { color: var(--t0); text-decoration-color: var(--t4); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--t0); }
+  :focus-visible { outline: 2px solid var(--t0); outline-offset: 2px; border-radius: 4px; }
+  code, pre { font-family: var(--mono); font-size: .86em; }
+  p code, li code, td code { color: var(--t0); }
+
+  /* Top bar */
+  .bar { position: sticky; top: 0; z-index: 10; background: var(--glass);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--bd); }
+  .bar-in { max-width: 960px; margin: 0 auto; height: 56px; padding: 0 20px; display: flex; align-items: center; gap: 16px; }
+  .brand { display: inline-flex; align-items: center; padding: 5px 14px 6px; border: 1px solid var(--t3);
+    border-radius: var(--pill); color: var(--t0); font-weight: 600; letter-spacing: -.2px; text-decoration: none; flex-shrink: 0; }
+  .brand:hover { border-color: var(--t2); background: var(--fill); }
+  .nav { display: flex; gap: 2px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { padding: 6px 10px; border-radius: var(--r-xs); color: var(--t2); font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .nav a:hover { background: var(--fill); color: var(--t0); }
+  .nav a[aria-current="true"] { color: var(--t0); background: var(--fill); }
+  .theme { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--fill);
+    color: var(--t1); display: grid; place-items: center; cursor: pointer; }
+  .theme:hover { background: var(--fill-hover); color: var(--t0); }
+  .theme svg { width: 16px; height: 16px; }
+
+  /* Page */
+  main { max-width: 960px; margin: 0 auto; padding: 0 20px 96px; }
+  .hero { padding: 72px 0 56px; }
+  .course { color: var(--t3); font-size: 13px; }
+  h1 { color: var(--t0); font-size: clamp(40px, 7vw, 56px); font-weight: 700; letter-spacing: -1.4px; line-height: 1.05; margin: 10px 0 18px; }
+  .lead { font-size: 17px; color: var(--t2); max-width: 62ch; line-height: 1.55; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .btn { display: inline-flex; align-items: center; height: 36px; padding: 0 18px; border-radius: var(--pill);
+    font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid var(--bd2); color: var(--t0); background: transparent; cursor: pointer; }
+  .btn:hover { background: var(--fill); }
+  .btn.primary { background: var(--t0); color: var(--bg); border-color: var(--t0); }
+  .btn.primary:hover { opacity: .88; }
+
+  section { padding: 64px 0; border-top: 1px solid var(--bd); }
+  h2 { color: var(--t0); font-size: 26px; font-weight: 700; letter-spacing: -.45px; line-height: 1.2; margin-bottom: 14px; }
+  h3 { color: var(--t0); font-size: 17px; font-weight: 600; letter-spacing: -.2px; margin: 40px 0 10px; }
+  p { max-width: 68ch; }
+  p + p { margin-top: 12px; }
+  .todo { color: var(--t3); font-style: italic; }
+  ol, ul { padding-left: 20px; max-width: 68ch; }
+  li + li { margin-top: 6px; }
+
+  .card { background: var(--s1); border: 1px solid var(--bd); border-radius: var(--r-sm); margin-top: 16px; }
+  .figure { padding: 20px; color: var(--t1); }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .warn { padding: 16px 18px; border: 1px dashed var(--t3); border-radius: var(--r-sm); margin-top: 20px; max-width: 76ch; }
+  .warn strong { color: var(--t0); }
+
+  .table { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+    color: var(--t3); padding: 12px 16px 9px; border-bottom: 1px solid var(--bd); white-space: nowrap; }
+  td { padding: 10px 16px; box-shadow: inset 0 -1px 0 var(--hair); color: var(--t2); vertical-align: top; }
+  tr:last-child td { box-shadow: none; }
+  td:first-child { color: var(--t1); }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  pre { background: var(--s1); border: 1px solid var(--bd); border-radius: var(--r-sm); padding: 16px 18px;
+    margin-top: 16px; overflow-x: auto; line-height: 1.55; color: var(--t1); font-size: 12.5px; }
+
+  .photos:empty { display: none; }
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 20px; }
+  .photos figure { background: var(--s1); border: 1px solid var(--bd); border-radius: var(--r-sm); overflow: hidden; }
+  .photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--s2); }
+  .photos figcaption { padding: 10px 12px 12px; font-size: 13px; color: var(--t2); line-height: 1.45; }
+
+  .viewer { padding: 18px; }
+  .viewer input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .viewer input[type="file"]:focus-visible + .btn, .viewer .btn:focus-within { outline: 2px solid var(--t0); outline-offset: 2px; }
+  .hint { color: var(--t3); font-size: 13px; margin-top: 10px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-top: 18px; }
+  .stats div { border-top: 1px solid var(--bd); padding-top: 10px; }
+  .stats b { display: block; color: var(--t0); font-size: 26px; font-weight: 700; letter-spacing: -.55px; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--t3); }
+  .log { max-height: 320px; overflow: auto; margin-top: 18px; border-top: 1px solid var(--bd); }
+
+  .timeline { list-style: none; padding: 0; margin-top: 20px; max-width: none; }
+  .timeline li { display: grid; grid-template-columns: 130px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--hair); margin: 0; }
+  .timeline time { color: var(--t3); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .timeline h4 { color: var(--t0); font-size: 15px; font-weight: 600; }
+  .timeline li.todo h4 { color: var(--t3); }
+  .timeline p { color: var(--t2); margin-top: 2px; }
+
+  footer { max-width: 960px; margin: 0 auto; padding: 28px 20px 56px; border-top: 1px solid var(--bd); color: var(--t3); font-size: 13px; }
+
+  @media (max-width: 640px) {
+    .bar-in { padding: 0 16px; gap: 10px; }
+    main { padding: 0 16px 72px; }
+    footer { padding: 24px 16px 48px; }
+    .hero { padding: 48px 0 40px; }
+    section { padding: 48px 0; }
+    .timeline li { grid-template-columns: 1fr; gap: 2px; }
+    .nav { -webkit-mask-image: linear-gradient(to right, #000 80%, transparent); mask-image: linear-gradient(to right, #000 80%, transparent); }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="#top">TapLock</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#photos">Photos</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#software">Software</a>
+      <a href="#experiments">Experiments</a>
+      <a href="#timeline">Timeline</a>
+    </nav>
+    <button class="theme" id="theme" type="button" aria-label="Switch between dark and light">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="hero">
+    <p class="course">Course project</p>
+    <h1>TapLock</h1>
+    <p class="lead">An RFID lock built with an Arduino UNO. A registered card or key fob turns a servo open for five
+      seconds, an unknown card gets a low beep, and three wrong cards in a row block the reader for 30 seconds.
+      Every attempt is saved to a CSV file.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://wokwi.com/projects/476354243482426369">Wokwi simulation</a>
+      <a class="btn" href="https://github.com/f1f2f0e0e4e0ede8ff0e/taplock">Source code</a>
+      <a class="btn" href="#" data-todo="video">Demo video</a>
+    </div>
+  </div>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <p>The RC522 reader reads the UID of a contactless card. The Arduino looks that UID up in a short list of
+      authorised cards. If it is there, the servo turns to the open position and the buzzer gives a short high beep;
+      after five seconds the servo turns back. If it is not, the buzzer gives a long low beep and nothing moves.
+      After three wrong cards in a row the reader ignores every card for 30 seconds, so trying cards one after
+      another gets slow very quickly.</p>
+
+    <h3>How the card is read</h3>
+    <p>The card has no battery. The reader produces a 13.56 MHz field, the field induces a current in the coil inside
+      the card, and that is enough for the card's chip to answer with its UID, a number written at the factory.
+      A 4-byte UID is not guaranteed to be unique, and cards with a writable UID are easy to buy. The security
+      part of the experiments comes back to this.</p>
+
+    <div class="card figure">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Block diagram: card, RC522 reader, Arduino UNO, then servo, buzzer and serial log">
+        <defs>
+          <marker id="arrow1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="20"  y="96"  width="150" height="68" rx="10"/>
+          <rect x="250" y="96"  width="170" height="68" rx="10"/>
+          <rect x="500" y="96"  width="170" height="68" rx="10"/>
+          <rect x="740" y="20"  width="140" height="60" rx="10"/>
+          <rect x="740" y="110" width="140" height="60" rx="10"/>
+          <rect x="740" y="200" width="140" height="56" rx="10"/>
+        </g>
+        <g font-size="15" fill="currentColor" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif">
+          <text x="95"  y="125">Card / key fob</text><text x="95"  y="146" font-size="13" opacity=".6">UID</text>
+          <text x="335" y="125">RC522 reader</text><text x="335" y="146" font-size="13" opacity=".6">SPI, 3.3 V</text>
+          <text x="585" y="125">Arduino UNO</text><text x="585" y="146" font-size="13" opacity=".6">compares the UID</text>
+          <text x="810" y="46">Servo</text><text x="810" y="66" font-size="13" opacity=".6">lock</text>
+          <text x="810" y="136">Buzzer</text><text x="810" y="156" font-size="13" opacity=".6">feedback</text>
+          <text x="810" y="225">Serial</text><text x="810" y="244" font-size="13" opacity=".6">CSV log</text>
+          <text x="210" y="118" font-size="12" opacity=".6">13.56 MHz</text>
+        </g>
+        <g fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow1)">
+          <path d="M172 130 H246"/>
+          <path d="M422 130 H496"/>
+          <path d="M672 126 C 705 126, 705 50, 736 50"/>
+          <path d="M672 130 H736"/>
+          <path d="M672 134 C 705 134, 705 228, 736 228"/>
+        </g>
+      </svg>
+    </div>
+
+  </section>
+
+  <section id="photos">
+    <h2>Photos</h2>
+    <p class="todo">Photos are added during the build.</p>
+    <div class="photos"></div>
+  </section>
+
+  <section id="hardware">
+    <h2>Hardware</h2>
+    <p>Four parts plus wiring, all from the laboratory inventory.</p>
+    <div class="card table">
+      <table>
+        <thead><tr><th>Part</th><th>Model</th><th>Job</th></tr></thead>
+        <tbody>
+          <tr><td>Board</td><td>KS0001 UNO R3</td><td>Reads the card, decides, drives the lock</td></tr>
+          <tr><td>RFID reader</td><td>KS0067 RC522 RFID Module</td><td>Reads the UID over SPI; comes with cards and key fobs</td></tr>
+          <tr><td>Lock</td><td>KS0209 Micro Servo 9G</td><td>Turns the bolt</td></tr>
+          <tr><td>Buzzer</td><td>KS0019 Passive Buzzer Alarm Module</td><td>Accept and deny sounds</td></tr>
+          <tr><td>Wiring</td><td>Breadboard, jumper wires, USB cable</td><td>Connections and power</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn">
+      <strong>The RC522 runs on 3.3 V.</strong> Its VCC goes to the 3.3V pin of the UNO, never to 5V. The data lines
+      still get the 5 V signals of the UNO. The MFRC522 datasheet does not rate its inputs for that, but this direct
+      connection is how the module is normally used with an UNO; a level shifter would be the strictly correct fix.
+    </div>
+
+    <h3>Connections</h3>
+    <div class="card table">
+      <table>
+        <thead><tr><th>Module pin</th><th>UNO pin</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>RC522 VCC</td><td><code>3.3V</code></td><td>never 5V</td></tr>
+          <tr><td>RC522 GND</td><td><code>GND</code></td><td></td></tr>
+          <tr><td>RC522 RST</td><td><code>D9</code></td><td>reset</td></tr>
+          <tr><td>RC522 SDA</td><td><code>D10</code></td><td>SPI chip select</td></tr>
+          <tr><td>RC522 MOSI</td><td><code>D11</code></td><td>hardware SPI</td></tr>
+          <tr><td>RC522 MISO</td><td><code>D12</code></td><td>hardware SPI</td></tr>
+          <tr><td>RC522 SCK</td><td><code>D13</code></td><td>hardware SPI</td></tr>
+          <tr><td>RC522 IRQ</td><td>not connected</td><td></td></tr>
+          <tr><td>Servo signal</td><td><code>D6</code></td><td>servo + to 5V, servo - to GND</td></tr>
+          <tr><td>Buzzer S</td><td><code>D8</code></td><td>buzzer + to 5V, buzzer - to GND</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Design decisions</h3>
+    <p>D11, D12 and D13 are the hardware SPI pins of the UNO, so only SDA and RST could be chosen; the buzzer went to
+      D8 because D9 is the reader's reset. The servo uses Timer1 and <code>tone()</code> uses Timer2, so they never
+      compete for a timer. There is no display: the buzzer and the serial log are enough feedback, and the build
+      stays at four parts.</p>
+  </section>
+
+  <section id="software">
+    <h2>Software</h2>
+    <p>The sketch is a state machine with three states: <code>LOCKED</code>, <code>UNLOCKED</code> and
+      <code>LOCKOUT</code>. It never calls <code>delay()</code>. It stores the time a state started and compares it
+      with <code>millis()</code> on every pass of <code>loop()</code>, so the reader keeps working while the lock is open.</p>
+    <p>Every state change goes through one function, <code>setState()</code>, and that function also moves the servo.
+      Only <code>UNLOCKED</code> opens it, so the servo cannot stay open while the program thinks the door is locked.</p>
+
+    <div class="card figure">
+      <svg viewBox="0 0 900 430" role="img" aria-label="Flowchart of the program">
+        <defs>
+          <marker id="arrow2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="360" y="14"  width="180" height="44" rx="22"/>
+          <rect x="360" y="90"  width="180" height="44" rx="8"/>
+          <path d="M450 160 L560 200 L450 240 L340 200 Z"/>
+          <rect x="640" y="174" width="200" height="52" rx="8"/>
+          <rect x="640" y="250" width="200" height="40" rx="8"/>
+          <rect x="350" y="264" width="200" height="52" rx="8"/>
+          <path d="M450 336 L560 376 L450 416 L340 376 Z"/>
+          <rect x="640" y="350" width="200" height="52" rx="8"/>
+          <path d="M840 270 H880"/>
+        </g>
+        <circle cx="880" cy="270" r="3.5" fill="currentColor"/>
+        <g font-size="14" fill="currentColor" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif">
+          <text x="450" y="41">start, setup()</text>
+          <text x="450" y="117">wait for a card</text>
+          <text x="450" y="205">UID in the list?</text>
+          <text x="740" y="196">short beep, open the servo</text>
+          <text x="740" y="215" font-size="12" opacity=".6">log GRANTED</text>
+          <text x="740" y="275">after 5 s, close the servo</text>
+          <text x="450" y="286">count the try, long beep</text>
+          <text x="450" y="305" font-size="12" opacity=".6">log DENIED</text>
+          <text x="450" y="381">3 wrong tries?</text>
+          <text x="740" y="372">lockout for 30 s</text>
+          <text x="740" y="391" font-size="12" opacity=".6">log LOCKOUT, cards ignored</text>
+        </g>
+        <g fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow2)">
+          <path d="M450 58 V87"/>
+          <path d="M450 134 V157"/>
+          <path d="M560 200 H637"/>
+          <path d="M740 226 V247"/>
+          <path d="M450 240 V261"/>
+          <path d="M450 316 V333"/>
+          <path d="M560 376 H637"/>
+          <path d="M840 376 H880 V112 H543"/>
+          <path d="M340 376 H250 V112 H357"/>
+        </g>
+        <g font-size="12" fill="currentColor" opacity=".6" font-family="-apple-system, system-ui, sans-serif">
+          <text x="578" y="192">yes</text>
+          <text x="458" y="255">no</text>
+          <text x="578" y="368">yes</text>
+          <text x="300" y="368">no</text>
+        </g>
+      </svg>
+    </div>
+
+    <h3>Settings in the code</h3>
+<pre><code>const int      ANGLE_LOCKED   = 0;      // servo angle when locked
+const int      ANGLE_OPEN     = 90;     // servo angle when open
+const uint32_t UNLOCK_TIME_MS = 5000;   // how long the lock stays open
+const uint8_t  MAX_TRIES      = 3;      // wrong cards in a row before lockout
+const uint32_t LOCKOUT_MS     = 30000;  // how long cards are ignored after that
+
+const uint8_t AUTHORISED[][UID_SIZE] = {
+  { 0x11, 0x22, 0x33, 0x44 },   // Wokwi green card
+  { 0xC0, 0xFF, 0xEE, 0x99 }    // Wokwi key fob
+};</code></pre>
+    <div class="actions">
+      <a class="btn" href="https://github.com/f1f2f0e0e4e0ede8ff0e/taplock/blob/main/firmware/taplock/taplock.ino">taplock.ino</a>
+      <a class="btn" href="https://github.com/f1f2f0e0e4e0ede8ff0e/taplock/blob/main/firmware/read_uid/read_uid.ino">read_uid.ino</a>
+      <a class="btn" href="https://wokwi.com/projects/476354243482426369">Wokwi simulation</a>
+    </div>
+
+    <h3>Adding a card</h3>
+    <ol>
+      <li>Upload <code>read_uid.ino</code> and open the serial monitor at 9600 baud.</li>
+      <li>Touch the card to the reader. The sketch prints its UID as a line of code.</li>
+      <li>Paste that line into <code>AUTHORISED</code> in <code>taplock.ino</code> and upload it again.
+        The number of cards is counted automatically.</li>
+    </ol>
+
+    <h3>Logging</h3>
+    <p>For every attempt the Arduino prints one line, <code>millis,uid,result</code>, where the result is
+      <code>GRANTED</code>, <code>DENIED</code> or <code>LOCKOUT</code>. The Arduino has no clock, so a Python script on
+      the computer adds the date and time and appends the line to <code>data/attempts.csv</code> in this repository.</p>
+<pre><code>python3 tools/logger.py                        # lists the serial ports
+python3 tools/logger.py /dev/cu.usbmodem14101  # macOS
+python3 tools/logger.py COM3                   # Windows</code></pre>
+
+    <h3>Log viewer</h3>
+    <p>The attempts saved in <code>data/attempts.csv</code>. Another file from the logger can be opened here too;
+      it is read in the browser and not uploaded anywhere.</p>
+    <div class="card viewer">
+      <input type="file" id="csv" accept=".csv,text/csv">
+      <label class="btn" for="csv">Open a CSV file</label>
+      <p class="hint" id="csv-status">No attempts recorded yet.</p>
+      <div id="csv-out" hidden>
+        <div class="stats">
+          <div><b id="n-total">0</b><span>Attempts</span></div>
+          <div><b id="n-granted">0</b><span>Granted</span></div>
+          <div><b id="n-denied">0</b><span>Denied</span></div>
+          <div><b id="n-lockout">0</b><span>Lockouts</span></div>
+          <div><b id="n-cards">0</b><span>Different cards</span></div>
+        </div>
+        <div class="log table">
+          <table>
+            <thead><tr><th>Date and time</th><th>UID</th><th>Result</th></tr></thead>
+            <tbody id="csv-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h3>Libraries and tools</h3>
+    <ul>
+      <li><a href="https://github.com/miguelbalboa/rfid">MFRC522</a> by Miguel Balboa, talks to the RC522 over SPI</li>
+      <li><a href="https://docs.arduino.cc/libraries/servo/">Servo</a> and <a href="https://docs.arduino.cc/language-reference/en/functions/communication/SPI/">SPI</a>, both part of the Arduino IDE</li>
+      <li><a href="https://www.arduino.cc/en/software/">Arduino IDE</a> for writing and uploading the sketch</li>
+      <li><a href="https://wokwi.com/">Wokwi</a> for the simulation before the real build</li>
+      <li><a href="https://pypi.org/project/pyserial/">pySerial</a> for reading the serial port from Python</li>
+    </ul>
+  </section>
+
+  <section id="experiments">
+    <h2>Experiments</h2>
+    <p>The measurements are about the reader: from how far it reads a card, how much the angle of the card matters,
+      and which materials stop it. Each condition is measured ten times. The raw numbers are in
+      <code>data/measurements.csv</code>. <span class="todo">Tables are filled in after the measurements.</span></p>
+
+    <h3>Reading range</h3>
+    <p>I move the card slowly towards the reader along a ruler and write down the distance at which it is first read.</p>
+    <div class="card table">
+      <table>
+        <thead><tr><th>Target</th><th>Average (mm)</th><th>Min</th><th>Max</th></tr></thead>
+        <tbody>
+          <tr><td>Card</td><td class="todo">-</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>Key fob</td><td class="todo">-</td><td class="todo">-</td><td class="todo">-</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Angle of the card</h3>
+    <p>The card is held at a fixed distance and tilted against the surface of the reader.</p>
+    <div class="card table">
+      <table>
+        <thead><tr><th>Angle</th><th>Read in 10 tries</th><th>Comment</th></tr></thead>
+        <tbody>
+          <tr><td>0°, flat</td><td class="todo">-</td><td></td></tr>
+          <tr><td>30°</td><td class="todo">-</td><td></td></tr>
+          <tr><td>60°</td><td class="todo">-</td><td></td></tr>
+          <tr><td>90°, edge on</td><td class="todo">-</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Materials in between</h3>
+    <p>The card is held at a fixed distance with each material between the card and the reader.</p>
+    <div class="card table">
+      <table>
+        <thead><tr><th>Material</th><th>Read in 10 tries</th><th>Range (mm)</th></tr></thead>
+        <tbody>
+          <tr><td>Nothing</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>Metal card holder</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>Mobile phone</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>Paper notebook</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>A second RFID card</td><td class="todo">-</td><td class="todo">-</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Conclusions</h3>
+    <p class="todo">Written after the measurements: which target reads from further away and whether antenna size explains it,
+      what happens when the card is edge on, what the metal card holder does to the signal, and which card the reader picks when two are stacked.</p>
+
+    <h3>Security</h3>
+    <p>Checking only the UID is weak. A card with a writable UID costs very little, and a copied UID opens this lock
+      just like the original. MIFARE Classic cards also have memory sectors protected by a key, and the MFRC522 library
+      can authenticate to them, so reading a secret from a sector would be a stronger check than the UID alone.
+      <span class="todo">Conclusion to be added.</span></p>
+  </section>
+
+  <section id="timeline">
+    <h2>Timeline</h2>
+    <p>Newest first.</p>
+    <ol class="timeline">
+      <li class="todo">
+        <time>date</time>
+        <div><h4>Wokwi simulation</h4><p>Read a UID in the simulator, then test grant, deny and lockout.</p></div>
+      </li>
+      <li class="todo">
+        <time>date</time>
+        <div><h4>Repository and report page</h4><p>Repository published, GitHub Pages turned on.</p></div>
+      </li>
+      <li>
+        <time datetime="2026-09-27">27 Sep 2026</time>
+        <div><h4>Idea and parts</h4><p>Chose RFID access control and checked every part against the laboratory inventory.</p></div>
+      </li>
+    </ol>
+  </section>
+
+</main>
+
+<footer>TapLock, a course project, 2026.</footer>
+
+<script>
+  // Theme button: dark is the default, the choice is remembered in this browser.
+  document.getElementById('theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+    root.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  });
+
+  // Mark the menu link of the section that is on screen.
+  const links = new Map([...document.querySelectorAll('.nav a')].map(a => [a.hash.slice(1), a]));
+  const observer = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      const link = links.get(e.target.id);
+      if (link) link.setAttribute('aria-current', e.isIntersecting);
+    }
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  document.querySelectorAll('section').forEach(s => observer.observe(s));
+
+  // Log viewer for the CSV written by tools/logger.py: datetime,millis,uid,result
+  function showLog(name, text) {
+    const status = document.getElementById('csv-status');
+    const out = document.getElementById('csv-out');
+    const lines = text.trim().split(/\r?\n/);
+
+    if (lines[0].trim() !== 'datetime,millis,uid,result') {
+      status.textContent = name + ' does not look like a file from logger.py.';
+      out.hidden = true;
+      return;
+    }
+
+    const rows = lines.slice(1).map(l => l.trim().split(',')).filter(r => r.length === 4);
+    const count = result => rows.filter(r => r[3] === result).length;
+    document.getElementById('n-granted').textContent = count('GRANTED');
+    document.getElementById('n-denied').textContent = count('DENIED');
+    document.getElementById('n-lockout').textContent = count('LOCKOUT');
+    document.getElementById('n-total').textContent = count('GRANTED') + count('DENIED');
+    document.getElementById('n-cards').textContent = new Set(rows.map(r => r[2])).size;
+
+    const body = document.getElementById('csv-rows');
+    body.replaceChildren();
+    for (const r of rows.slice().reverse()) {   // newest first
+      const tr = document.createElement('tr');
+      for (const value of [r[0].replace('T', ' '), r[2], r[3]]) {
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+
+    status.textContent = name + ', ' + rows.length + ' lines';
+    out.hidden = false;
+  }
+
+  // The log in the repository is shown automatically once it exists.
+  fetch('data/attempts.csv')
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(text => showLog('data/attempts.csv', text))
+    .catch(() => {});
+
+  document.getElementById('csv').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (file) showLog(file.name, await file.text());
+  });
+</script>
+</body>
+</html>

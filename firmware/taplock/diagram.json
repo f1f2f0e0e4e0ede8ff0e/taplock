@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "author": "",
+  "editor": "wokwi",
+  "parts": [
+    {"type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {}},
+    {"type": "board-mfrc522", "id": "rfid", "top": -60, "left": -250, "rotate": 180, "attrs": {}},
+    {"type": "wokwi-servo", "id": "servo", "top": 10, "left": 330, "attrs": {"horn": "single"}},
+    {"type": "wokwi-buzzer", "id": "buzzer", "top": -120, "left": 205, "attrs": {"volume": "0.3"}}
+  ],
+  "connections": [
+    ["rfid:RST", "uno:9", "orange", ["h26", "v-7.35", "h167"]],
+    ["rfid:SDA", "uno:10", "yellow", ["h22", "v-70.95", "h161.5"]],
+    ["rfid:MOSI", "uno:11", "blue", ["h18", "v-57.75", "h156"]],
+    ["rfid:MISO", "uno:12", "violet", ["h14", "v-54.15", "h150.5"]],
+    ["rfid:SCK", "uno:13", "green", ["h10", "v-79.35", "h145"]],
+    ["rfid:GND", "uno:GND.1", "black", ["h6", "v-46.95", "h139.5"]],
+    ["rfid:3.3V", "uno:3.3V", "red", ["h28", "v230.25", "h152"]],
+    ["servo:PWM", "uno:6", "orange", ["h-12", "v-87", "h-119.5"]],
+    ["servo:V+", "uno:5V", "red", ["h-24", "v156.5", "h-146"]],
+    ["servo:GND", "uno:GND.3", "black", ["h-18", "v160", "h-133"]],
+    ["buzzer:2", "uno:8", "green", ["v16", "h-69"]],
+    ["buzzer:1", "uno:GND.2", "black", ["v8", "h68", "v260", "h-130.5"]]
+  ],
+  "dependencies": {}
+}
