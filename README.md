@@ -33,7 +33,9 @@ working while the lock is open. Every value in the table is a constant at the to
 
 ## Hardware
 
-Arduino UNO R3, RC522 RFID reader with cards and key fobs, 9g micro servo, passive buzzer module.
+Arduino UNO R3, RC522 RFID reader with cards and key fobs, 9g micro servo, passive buzzer module and an LCM 1602 + I²C (16×2) character display on the physical build.
+
+### Prototype connections
 
 | Module pin | UNO pin | Note |
 |---|---|---|
@@ -56,9 +58,13 @@ the other preset cards are not.
 ### Real board
 
 1. Install the **MFRC522** library by Miguel Balboa from the Library Manager of the Arduino IDE.
-2. Upload [`read_uid.ino`](firmware/read_uid/read_uid.ino), open the serial monitor at 9600 baud and touch a card.
-   It prints the UID as a line of code.
-3. Paste that line into `AUTHORISED` in [`taplock.ino`](firmware/taplock/taplock.ino) and upload it.
+2. Upload [`read_uid.ino`](firmware/read_uid/read_uid.ino), open Serial Monitor at 9600 baud and tap the card on the RC522.
+3. If the sketch reports a 4-byte UID, copy the entry including its trailing comma, for example `{ 0x11, 0x22, 0x33, 0x44 },`.
+4. Add the entry to the authorised-card list in the sketch you use for your build. In the repository's
+   [`taplock.ino`](firmware/taplock/taplock.ino), paste it on its own line just after the opening brace of `AUTHORISED`.
+5. Upload the edited sketch and tap the card again to confirm access. For the LCD build, use your LCD-enabled sketch for this step.
+
+The repository sketch accepts only 4-byte UIDs and prints `GRANTED` when it accepts a card.
 
 ### Logging
 

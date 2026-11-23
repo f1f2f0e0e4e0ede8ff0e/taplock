@@ -100,10 +100,11 @@
   pre { background: var(--s1); border: 1px solid var(--bd); border-radius: var(--r-sm); padding: 16px 18px;
     margin-top: 16px; overflow-x: auto; line-height: 1.55; color: var(--t1); font-size: 12.5px; }
 
-  .photos:empty { display: none; }
   .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 20px; }
   .photos figure { background: var(--s1); border: 1px solid var(--bd); border-radius: var(--r-sm); overflow: hidden; }
-  .photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--s2); }
+  .photos a { display: block; }
+  .photos a:focus-visible { outline-offset: -3px; }
+  .photos img { display: block; width: 100%; height: auto; background: var(--s2); }
   .photos figcaption { padding: 10px 12px 12px; font-size: 13px; color: var(--t2); line-height: 1.45; }
 
   .viewer { padding: 18px; }
@@ -222,13 +223,28 @@
 
   <section id="photos">
     <h2>Photos</h2>
-    <p class="todo">Photos are added during the build.</p>
-    <div class="photos"></div>
+    <div class="photos">
+      <figure>
+        <a href="images/01-taplock-build.jpg"><img src="images/01-taplock-build.jpg" width="768" height="1024" loading="lazy" alt="TapLock wired on the lab panel with the RFID reader in front and the LCD at the upper right"></a>
+        <figcaption>TapLock on the lab panel.</figcaption>
+      </figure>
+      <figure>
+        <a href="images/02-rfid-reader.jpg"><img src="images/02-rfid-reader.jpg" width="768" height="1024" loading="lazy" alt="RC522 reader and a white RFID card with the LCD showing Scan your card"></a>
+        <figcaption>RFID reader and card ready for a scan.</figcaption>
+      </figure>
+      <figure>
+        <a href="images/03-arduino-wiring.jpg"><img src="images/03-arduino-wiring.jpg" width="768" height="1024" loading="lazy" alt="Close-up of the Arduino UNO with jumper wires and its USB cable connected"></a>
+        <figcaption>Arduino UNO wiring.</figcaption>
+      </figure>
+      <figure>
+        <a href="images/04-lcd-lockout.jpg"><img src="images/04-lcd-lockout.jpg" width="768" height="1024" loading="lazy" alt="LCD showing Too many tries and Wait: 3 s"></a>
+        <figcaption>LCD countdown during lockout.</figcaption>
+      </figure>
+    </div>
   </section>
 
   <section id="hardware">
     <h2>Hardware</h2>
-    <p>Four parts plus wiring, all from the laboratory inventory.</p>
     <div class="card table">
       <table>
         <thead><tr><th>Part</th><th>Model</th><th>Job</th></tr></thead>
@@ -237,6 +253,7 @@
           <tr><td>RFID reader</td><td>KS0067 RC522 RFID Module</td><td>Reads the UID over SPI; comes with cards and key fobs</td></tr>
           <tr><td>Lock</td><td>KS0209 Micro Servo 9G</td><td>Turns the bolt</td></tr>
           <tr><td>Buzzer</td><td>KS0019 Passive Buzzer Alarm Module</td><td>Accept and deny sounds</td></tr>
+          <tr><td>LCD</td><td>LCM 1602 + I²C (16×2)</td><td>Shows the scan prompt and lockout countdown on the physical build</td></tr>
           <tr><td>Wiring</td><td>Breadboard, jumper wires, USB cable</td><td>Connections and power</td></tr>
         </tbody>
       </table>
@@ -248,7 +265,7 @@
       connection is how the module is normally used with an UNO; a level shifter would be the strictly correct fix.
     </div>
 
-    <h3>Connections</h3>
+    <h3>Prototype connections</h3>
     <div class="card table">
       <table>
         <thead><tr><th>Module pin</th><th>UNO pin</th><th>Note</th></tr></thead>
@@ -270,8 +287,7 @@
     <h3>Design decisions</h3>
     <p>D11, D12 and D13 are the hardware SPI pins of the UNO, so only SDA and RST could be chosen; the buzzer went to
       D8 because D9 is the reader's reset. The servo uses Timer1 and <code>tone()</code> uses Timer2, so they never
-      compete for a timer. There is no display: the buzzer and the serial log are enough feedback, and the build
-      stays at four parts.</p>
+      compete for a timer.</p>
   </section>
 
   <section id="software">
@@ -351,13 +367,17 @@ const uint8_t AUTHORISED[][UID_SIZE] = {
       <a class="btn" href="https://wokwi.com/projects/476354243482426369">Wokwi simulation</a>
     </div>
 
-    <h3>Adding a card</h3>
+    <h3>Adding an authorised card</h3>
     <ol>
-      <li>Upload <code>read_uid.ino</code> and open the serial monitor at 9600 baud.</li>
-      <li>Touch the card to the reader. The sketch prints its UID as a line of code.</li>
-      <li>Paste that line into <code>AUTHORISED</code> in <code>taplock.ino</code> and upload it again.
-        The number of cards is counted automatically.</li>
+      <li>Upload <code>read_uid.ino</code> from the Arduino IDE, then open Serial Monitor at 9600 baud.</li>
+      <li>Tap the card on the RC522. For a 4-byte UID, copy the values in braces and the trailing comma,
+        for example <code>{ 0x11, 0x22, 0x33, 0x44 },</code>.</li>
+      <li>Add the entry to the authorised-card list in the sketch you use for your build. In the repository's
+        <code>taplock.ino</code>, paste it on its own line just after the opening brace of <code>AUTHORISED</code>.</li>
+      <li>Upload the edited sketch and tap the card again to confirm access. For the LCD build, use your
+        LCD-enabled sketch for this step.</li>
     </ol>
+    <p>The repository sketch accepts only 4-byte UIDs and prints <code>GRANTED</code> when it accepts a card.</p>
 
     <h3>Logging</h3>
     <p>For every attempt the Arduino prints one line, <code>millis,uid,result</code>, where the result is
