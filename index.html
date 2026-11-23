@@ -423,60 +423,75 @@ python3 tools/logger.py COM3                   # Windows</code></pre>
 
   <section id="experiments">
     <h2>Experiments</h2>
-    <p>The measurements are about the reader: from how far it reads a card, how much the angle of the card matters,
-      and which materials stop it. Each condition is measured ten times. The raw numbers are in
-      <code>data/measurements.csv</code>. <span class="todo">Tables are filled in after the measurements.</span></p>
+    <p><strong>Simulated results.</strong> A Python model ran ten virtual trials per condition for reader range,
+      card angle and materials between the card and the reader. These estimates are unverified on the physical TapLock.</p>
+    <p>NXP lists a typical reach of up to 50 mm depending on antenna size and tuning.
+      <a href="https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf">NXP MFRC522 datasheet</a> ·
+      <a href="data/simulated_measurements.csv">Simulated trials (CSV)</a></p>
+    <details class="hint">
+      <summary>Model assumptions</summary>
+      <p>The model approximates the reader as a circular coil with a 20 mm effective radius. Signal falls with distance
+        according to <code>F(d) = (1 + (d / 20)²)⁻³ᐟ²</code> and scales with the cosine of the card's tilt. The flat,
+        unobstructed reference ranges are set to 38 mm for the card and 24 mm for the key fob. Ten paired trials use
+        a uniformly distributed signal variation of ±20% with random seed 522.</p>
+      <p>The assumed signal multipliers are 1.00 with no barrier, 0.06 for the metal holder, 0.44 for the phone,
+        0.91 for the paper notebook and 0.56 for the second card. Distance sweeps stop at assumed thicknesses of
+        0, 3, 8, 8 and 1 mm respectively. Metal near the antenna can reduce the field and change its tuning.
+        <a href="https://www.nxp.com/docs/en/application-note/AN11564.pdf">NXP antenna design guide</a></p>
+    </details>
 
     <h3>Reading range</h3>
-    <p>I move the card slowly towards the reader along a ruler and write down the distance at which it is first read.</p>
+    <p>The model brings each flat target toward the reader in 1 mm steps from 50 mm and records its first successful read.</p>
     <div class="card table">
       <table>
-        <thead><tr><th>Target</th><th>Average (mm)</th><th>Min</th><th>Max</th></tr></thead>
+        <thead><tr><th>Target</th><th>Average (mm)</th><th>Min (mm)</th><th>Max (mm)</th></tr></thead>
         <tbody>
-          <tr><td>Card</td><td class="todo">-</td><td class="todo">-</td><td class="todo">-</td></tr>
-          <tr><td>Key fob</td><td class="todo">-</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>Card</td><td>37.5</td><td>34</td><td>40</td></tr>
+          <tr><td>Key fob</td><td>23.5</td><td>21</td><td>25</td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>Angle of the card</h3>
-    <p>The card is held at a fixed distance and tilted against the surface of the reader.</p>
+    <p>The centre of the card stays 27 mm from the reader. A tilt of 0° means the two surfaces are parallel.</p>
     <div class="card table">
       <table>
         <thead><tr><th>Angle</th><th>Read in 10 tries</th><th>Comment</th></tr></thead>
         <tbody>
-          <tr><td>0°, flat</td><td class="todo">-</td><td></td></tr>
-          <tr><td>30°</td><td class="todo">-</td><td></td></tr>
-          <tr><td>60°</td><td class="todo">-</td><td></td></tr>
-          <tr><td>90°, edge on</td><td class="todo">-</td><td></td></tr>
+          <tr><td>0°, flat</td><td>10/10</td><td>Strongest coupling</td></tr>
+          <tr><td>30°</td><td>10/10</td><td>Above the read threshold in every trial</td></tr>
+          <tr><td>60°</td><td>6/10</td><td>Close to the read threshold</td></tr>
+          <tr><td>90°, edge on</td><td>0/10</td><td>No read in the model</td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>Materials in between</h3>
-    <p>The card is held at a fixed distance with each material between the card and the reader.</p>
+    <p>The card stays flat at 27 mm for the read counts. The range column averages ten distance sweeps for each material.
+      A condition with no successful sweeps is marked “No read”.</p>
     <div class="card table">
       <table>
-        <thead><tr><th>Material</th><th>Read in 10 tries</th><th>Range (mm)</th></tr></thead>
+        <thead><tr><th>Material</th><th>Read in 10 tries</th><th>Average range (mm)</th></tr></thead>
         <tbody>
-          <tr><td>Nothing</td><td class="todo">-</td><td class="todo">-</td></tr>
-          <tr><td>Metal card holder</td><td class="todo">-</td><td class="todo">-</td></tr>
-          <tr><td>Mobile phone</td><td class="todo">-</td><td class="todo">-</td></tr>
-          <tr><td>Paper notebook</td><td class="todo">-</td><td class="todo">-</td></tr>
-          <tr><td>A second RFID card</td><td class="todo">-</td><td class="todo">-</td></tr>
+          <tr><td>Nothing</td><td>10/10</td><td>37.5</td></tr>
+          <tr><td>Metal card holder</td><td>0/10</td><td>No read</td></tr>
+          <tr><td>Mobile phone</td><td>4/10</td><td>25.2</td></tr>
+          <tr><td>Paper notebook</td><td>10/10</td><td>35.9</td></tr>
+          <tr><td>A second RFID card</td><td>8/10</td><td>28.7</td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>Conclusions</h3>
-    <p class="todo">Written after the measurements: which target reads from further away and whether antenna size explains it,
-      what happens when the card is edge on, what the metal card holder does to the signal, and which card the reader picks when two are stacked.</p>
+    <p>In the model, the flat card reads 14 mm farther on average than the key fob. That difference follows from
+      the assumed antenna coupling. At 27 mm, the notebook produces the same read count as the unobstructed card,
+      while the phone cuts it to 4/10 and the metal holder to 0/10. The stacked-card test models weaker coupling
+      to the target card. Finding which UID the reader returns requires a separate hardware test.</p>
 
     <h3>Security</h3>
     <p>Checking only the UID is weak. A card with a writable UID costs very little, and a copied UID opens this lock
       just like the original. MIFARE Classic cards also have memory sectors protected by a key, and the MFRC522 library
-      can authenticate to them, so reading a secret from a sector would be a stronger check than the UID alone.
-      <span class="todo">Conclusion to be added.</span></p>
+      can authenticate to them, so reading a secret from a sector would be a stronger check than the UID alone.</p>
   </section>
 
   <section id="timeline">
